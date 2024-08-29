@@ -1,5 +1,5 @@
 import { Connection, LAMPORTS_PER_SOL, PublicKey, sendAndConfirmTransaction, Signer, SystemProgram, Transaction } from '@solana/web3.js';
-import { createCloseAccountInstruction, createSyncNativeInstruction, createWrappedNativeAccount, getOrCreateAssociatedTokenAccount, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createAssociatedTokenAccountIdempotent, createCloseAccountInstruction, createSyncNativeInstruction, createWrappedNativeAccount, getOrCreateAssociatedTokenAccount, NATIVE_MINT, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -31,20 +31,7 @@ const wrapSol = async (
 
     // submit transaction
     const txSignature = await sendAndConfirmTransaction(connection, transaction, [signer]);
-    console.log("transaction submitted")
-
-    // validate transaction within 4 seconds
-    try {
-        const latestBlockhash = await connection.getLatestBlockhash();
-        await connection.confirmTransaction({
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            signature: txSignature,
-        }, 'confirmed');
-        console.log("transaction confirmation successful")
-    } catch (error) {
-        console.log('token error', error);
-    };
+    console.log(`transaction submitted with hash: ${txSignature}`);
 }
 
 const unwrapSol = async (
@@ -52,14 +39,15 @@ const unwrapSol = async (
     signer: Signer,
 ) => {
     // wSol ATA
-    const wSolAta = await getOrCreateAssociatedTokenAccount(connection, signer, NATIVE_MINT, signer.publicKey);
+    const a = await getOrCreateAssociatedTokenAccount(connection, signer, NATIVE_MINT, signer.publicKey);
+    // const a = await createAssociatedTokenAccountIdempotent(connection, signer, NATIVE_MINT, signer.publicKey);
     const transaction = new Transaction;
     const instructions = [];
 
     // close wSol account instruction
     instructions.push(
         createCloseAccountInstruction(
-          wSolAta.address,
+          a.address,
           signer.publicKey,
           signer.publicKey
         )
@@ -70,25 +58,12 @@ const unwrapSol = async (
 
     // submit transaction
     const txSignature = await sendAndConfirmTransaction(connection, transaction, [signer]);
-    console.log("transaction submitted")
-
-    // validate transaction within 4 seconds
-    try {
-        const latestBlockhash = await connection.getLatestBlockhash();
-        await connection.confirmTransaction({
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            signature: txSignature,
-        }, 'confirmed');
-        console.log("transaction confirmation successful")
-    } catch (error) {
-        console.log('token error', error);
-    };
+    console.log(`transaction submitted with hash: ${txSignature}`);
 }
 
 const run = async() => {
     const connection = new Connection(
-        'https://api.mainnet-beta.solana.com', "confirmed"
+        'https://smart-young-meadow.solana-mainnet.quiknode.pro/001e2a39874b0e429cb46ed1073ed3f80bdff9bd/', "confirmed"
     )
 
     
